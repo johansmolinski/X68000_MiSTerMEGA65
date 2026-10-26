@@ -849,7 +849,9 @@ begin
 						dual_phase<='0';
 					elsif(t0_addr(awidth-3 downto 6)/=t0addrh and t0_rd='1' and vidcount<2 and rambusy='0')then
 						t0addrh<=t0_addr(awidth-3 downto 6);
-						ramaddrh<=t0_addr(awidth-3downto 6);
+						-- MEGA65 port 2026-10-26: space before "downto" (a lexical error for ghdl; Quartus accepts it). Original:
+						--ramaddrh<=t0_addr(awidth-3downto 6);
+						ramaddrh<=t0_addr(awidth-3 downto 6);
 						RAM_STATE<=ST_T0READ;
 						rambgnaddr<=(others=>'0');
 						ramendaddr<=(others=>'0');
@@ -905,7 +907,9 @@ begin
 						dual_phase<='0';
 					elsif(t1_addr(awidth-3 downto 6)/=t1addrh and t1_rd='1' and vidcount<2 and rambusy='0')then
 						t1addrh<=t1_addr(awidth-3 downto 6);
-						ramaddrh<=t1_addr(awidth-3downto 6);
+						-- MEGA65 port 2026-10-26: space before "downto" (a lexical error for ghdl; Quartus accepts it). Original:
+						--ramaddrh<=t1_addr(awidth-3downto 6);
+						ramaddrh<=t1_addr(awidth-3 downto 6);
 						RAM_STATE<=ST_T1READ;
 						rambgnaddr<=(others=>'0');
 						ramendaddr<=(others=>'0');

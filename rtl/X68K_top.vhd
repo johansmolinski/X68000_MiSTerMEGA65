@@ -1,3 +1,4 @@
+-- MEGA65 port: identifier renames by rtl/mega65/legalize.py (context -> contbits, vmode -> vmode_m, x68k_native_crtc port VMODE -> \VMODE\)
 LIBRARY	IEEE;
 	USE	IEEE.STD_LOGIC_1164.ALL;
 	USE IEEE.STD_LOGIC_ARITH.ALL;
@@ -883,11 +884,11 @@ constant midim_div :integer :=SCFREQ/250;  -- 250 kHz
 signal	midi_csft	:std_logic;
 
 --Contrast controller
-constant	context	:integer	:=2;
-signal scan_contrast :std_logic_vector(3+context downto 0);
-signal scan_controls :std_logic_vector(5+context downto 0);
-signal	contval	:std_logic_vector(3+context downto 0);
-signal	contvalm	:std_logic_vector(3+context downto 0);
+constant	contbits	:integer	:=2;
+signal scan_contrast :std_logic_vector(3+contbits downto 0);
+signal scan_controls :std_logic_vector(5+contbits downto 0);
+signal	contval	:std_logic_vector(3+contbits downto 0);
+signal	contvalm	:std_logic_vector(3+contbits downto 0);
 signal	contc_rdat	:std_logic_vector(7 downto 0);
 signal	contc_doe	:std_logic;
 
@@ -1336,7 +1337,7 @@ port(
 	AP		:in std_logic_vector(3 downto 0);
 	txtmask	:in std_logic_vector(15 downto 0)	:=(others=>'0');
 	gmode	:in std_logic_vector(1 downto 0);
-	vmode	:in std_logic_vector(1 downto 0);
+	vmode_m	:in std_logic_vector(1 downto 0);
 	gsize	:in std_logic;
 	vc_gsize	:in std_logic	:='0';
 	gfxbuf	:in std_logic	:='0';
@@ -1386,7 +1387,7 @@ port(
 	VSYNC		:out std_logic;
 	
 	HMODE		:in std_logic_vector(1 downto 0);		-- "00":256 "01":512 "10":768 "11":768
-	VMODE		:in std_logic_vector(1 downto 0);		-- 1:512 0:256
+	\VMODE\		:in std_logic_vector(1 downto 0);		-- 1:512 0:256
 
 	HRL         :in std_logic;
 	hfreq       :in std_logic;
@@ -3109,7 +3110,7 @@ begin
 		AP		=>vr_AP,
 		txtmask	=>vr_txtmask,
 		gmode	=>vr_col,
-		vmode	=>vr_GR_CMODE,
+		vmode_m	=>vr_GR_CMODE,
 		gsize	=>vr_size,
 		vc_gsize	=>vr_GR_SIZE,
 		gfxbuf	=>vr_GFXBUF,
@@ -3546,7 +3547,7 @@ begin
 		VSYNC       =>vidVS,
 		
 		HMODE       =>vr_HD,
-		VMODE       =>vr_VD,
+		\VMODE\       =>vr_VD,
 	
 		hrl         =>vr_DC,
 		hfreq       =>vr_hfreq,
@@ -3598,7 +3599,7 @@ begin
 	);
 
 	vid_ce <= '1';
-	cont	:contcont generic map(context) port map(
+	cont	:contcont generic map(contbits) port map(
 		addrin	=>abus,
 		wr		=>b_wr(0),
 		rd		=>b_rd,
@@ -3614,15 +3615,15 @@ begin
 		srstn	=>vid_rstn
 	);
     scan_reset_out <= scan_rstn;
-    scan_control_cdc :x68k_video_snapshot generic map(WIDTH => 6+context)
+    scan_control_cdc :x68k_video_snapshot generic map(WIDTH => 6+contbits)
     port map(src_clk =>sysclk, dst_clk =>scanclk, reset_n =>vid_rstn,
              in_data =>vid_mode & contval, out_data =>scan_controls, valid =>open);
-    scan_video_mode <= scan_controls(5+context downto 4+context);
-    scan_contrast <= scan_controls(3+context downto 0);
+    scan_video_mode <= scan_controls(5+contbits downto 4+contbits);
+    scan_contrast <= scan_controls(3+contbits downto 0);
     contvalm <= scan_contrast;
-	contR	:contrast  generic map(6,4+context,8) port map(vidRF,contvalm,vidRC);
-	contG	:contrast  generic map(6,4+context,8) port map(vidGF,contvalm,vidGC);
-	contB	:contrast  generic map(6,4+context,8) port map(vidBF,contvalm,vidBC);
+	contR	:contrast  generic map(6,4+contbits,8) port map(vidRF,contvalm,vidRC);
+	contG	:contrast  generic map(6,4+contbits,8) port map(vidGF,contvalm,vidGC);
+	contB	:contrast  generic map(6,4+contbits,8) port map(vidBF,contvalm,vidBC);
 	
     process(scanclk) begin
         if rising_edge(scanclk) then

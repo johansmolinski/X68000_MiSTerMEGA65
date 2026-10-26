@@ -2474,7 +2474,11 @@ endmodule
 module uRom( input clk, input [UADDR_WIDTH-1:0] microAddr, output logic [UROM_WIDTH-1:0] microOutput);
 	reg [UROM_WIDTH-1:0] uRam[ UROM_DEPTH];		
 	initial begin
-		$readmemb("microrom.mem", uRam);
+		// MEGA65 port 2026-10-26: path relative to the tool's working directory: Vivado
+		// synthesises in CORE/CORE-R6.runs/synth_1, the simulation (tb/sim) runs two levels
+		// below a directory that links X68000_MiSTerMEGA65 (Megamiga's fx68k has the same
+		// change). Original: $readmemb("microrom.mem", uRam);
+		$readmemb("../../X68000_MiSTerMEGA65/rtl/FX68K/microrom.mem", uRam);
 	end
 	
 	always_ff @( posedge clk) 
@@ -2485,7 +2489,11 @@ endmodule
 module nanoRom( input clk, input [NADDR_WIDTH-1:0] nanoAddr, output logic [NANO_WIDTH-1:0] nanoOutput);
 	reg [NANO_WIDTH-1:0] nRam[ NANO_DEPTH];		
 	initial begin
-		$readmemb("nanorom.mem", nRam);
+		// MEGA65 port 2026-10-26: path relative to the tool's working directory: Vivado
+		// synthesises in CORE/CORE-R6.runs/synth_1, the simulation (tb/sim) runs two levels
+		// below a directory that links X68000_MiSTerMEGA65 (Megamiga's fx68k has the same
+		// change). Original: $readmemb("nanorom.mem", nRam);
+		$readmemb("../../X68000_MiSTerMEGA65/rtl/FX68K/nanorom.mem", nRam);
 	end
 	
 	always_ff @( posedge clk) 

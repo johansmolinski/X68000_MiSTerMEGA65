@@ -96,6 +96,9 @@ begin
 					seekpend(3)<=seekreq;
 					destb3<=destin;
 					tdo(3)<=tdi(3);
+				-- MEGA65 port 2026-10-26: "when others" added; a case over std_logic_vector
+				-- must cover every value (ghdl stops, Quartus accepts it).
+				when others =>
 				end case;
 			end if;
 			

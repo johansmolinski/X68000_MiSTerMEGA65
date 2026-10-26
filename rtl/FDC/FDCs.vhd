@@ -361,7 +361,11 @@ signal	setRs		:std_logic;
 signal	incRs		:std_logic;
 signal	resRs		:std_logic;
 signal	setNs		:std_logic;
-signal	bitwidth	:integer range 0 to maxbwidth*2;
+-- MEGA65 port 2026-10-26: bitwidth only ever holds int0..int3 (0 to maxbwidth); declared with
+-- their range so that it matches fmdem's port bitlen (ghdl's synthesis refuses ports whose
+-- actual has a wider range). Original:
+--signal	bitwidth	:integer range 0 to maxbwidth*2;
+signal	bitwidth	:integer range 0 to maxbwidth;
 signal	sftwidth	:integer range 0 to maxbwidth*2;
 signal	setHD		:std_logic;
 signal	resHD		:std_logic;
@@ -634,7 +638,9 @@ port(
 end component;
 begin
 	
-	usel<=US;
+	-- MEGA65 port 2026-10-26: usel is driven again below (usel<=uselb, uselb<=US); one
+	-- driver only (Quartus merged the two, ghdl and VHDL do not). Original:
+	--usel<=US;
 	
 	IOWR_DAT<='1' when CSn='0' and A0='1' and WRn='0' else '0';
 	IORD_DAT<='1' when CSn='0' and A0='1' and RDn='0' else '0';

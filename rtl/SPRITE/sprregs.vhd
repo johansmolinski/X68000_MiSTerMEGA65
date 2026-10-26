@@ -1,3 +1,4 @@
+-- MEGA65 port: identifier renames by rtl/mega65/legalize.py (output port reg -> regout, for ghdl's Verilog writer)
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
@@ -119,7 +120,7 @@ port(
 	wr		:in std_logic_vector(1 downto 0);
 	doe		:out std_logic;
 
-	reg		:out std_logic_vector(15 downto 0);
+	regout		:out std_logic_vector(15 downto 0);
 	
 	clk		:in std_logic;
 	ce      :in std_logic := '1';

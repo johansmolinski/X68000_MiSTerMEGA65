@@ -1,3 +1,4 @@
+-- MEGA65 port: identifier renames by rtl/mega65/legalize.py (context -> contbits, vmode -> vmode_m, x68k_native_crtc port VMODE -> \VMODE\)
 LIBRARY	IEEE;
 USE	IEEE.STD_LOGIC_1164.ALL;
 USE IEEE.STD_LOGIC_ARITH.ALL;
@@ -31,7 +32,7 @@ port(
 	AP		:in std_logic_vector(3 downto 0);
 	txtmask	:in std_logic_vector(15 downto 0)	:=(others=>'0');
 	gmode	:in std_logic_vector(1 downto 0);
-	vmode	:in std_logic_vector(1 downto 0);
+	vmode_m	:in std_logic_vector(1 downto 0);
 	gsize	:in std_logic;
 	vc_gsize	:in std_logic	:='0';
 	gfxbuf	:in std_logic	:='0';
@@ -130,8 +131,8 @@ begin
 	gpconven <= '0' when gpcen='0' else
             '0' when atype/=addr_GRAM else
             '0' when gmode(1)='1' else              -- 65K: siempre raw, sin conversión
-            '0' when vc_gsize='1' and vmode="00" else
-            '1' when gmode="01" and vmode="00" else
+            '0' when vc_gsize='1' and vmode_m="00" else
+            '1' when gmode="01" and vmode_m="00" else
             '0';
 	m_rd<='1' when m_rw='1' and m_as='0' else '0';
 	m_wr<='0' when atype=addr_ROM else '1' when m_rw='0' and m_as='0' else '0';
@@ -164,8 +165,8 @@ begin
 				m_addr(23 downto 1) when atype=addr_MRAM else
 				t_base+("00000" & m_addr(16 downto 1) & prane) when SWen='1' else
 				t_base+("00000" & m_addr(16 downto 1) & m_addr(18 downto 17)) when atype=addr_TRAM else
-				g_base+("00000" & m_addr(18 downto 1)) when gpconven='1' and vmode="01" else
-				g_base+("00000" & m_addr(18 downto 1)) when gpconven='1' and vmode="00" else
+				g_base+("00000" & m_addr(18 downto 1)) when gpconven='1' and vmode_m="01" else
+				g_base+("00000" & m_addr(18 downto 1)) when gpconven='1' and vmode_m="00" else
 				g_base+("00000" & m_addr(18 downto 1)) when atype=addr_GRAM and gfxbuf='1' else
 				g_base+("00000" & m_addr(18 downto 1)) when atype=addr_GRAM and (gmode="10" or gmode="11") else
 				g_base+("00000" & m_addr(18 downto 1)) when atype=addr_GRAM and gmode="01" else
@@ -175,12 +176,12 @@ begin
 	
 	ram_wdat<=	
 				ldr_wdat & ldr_wdat when ldr_aen='1' else
-				m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) when gpconven='1' and vmode="00"and gpstate=gp_p0 else
-				m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) when gpconven='1' and vmode="00"and gpstate=gp_p1 else
-				m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) when gpconven='1' and vmode="00"and gpstate=gp_p2 else
-				m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) when gpconven='1' and vmode="00"and gpstate=gp_p3 else
-				m_wdat( 7 downto  0) & m_wdat( 7 downto  0) when gpconven='1' and vmode="01" and gpstate=gp_p0 else
-				m_wdat(15 downto  8) & m_wdat(15 downto  8) when gpconven='1' and vmode="01" and gpstate=gp_p2 else
+				m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) when gpconven='1' and vmode_m="00"and gpstate=gp_p0 else
+				m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) when gpconven='1' and vmode_m="00"and gpstate=gp_p1 else
+				m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) & m_wdat( 3 downto  0) when gpconven='1' and vmode_m="00"and gpstate=gp_p2 else
+				m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) & m_wdat( 7 downto  4) when gpconven='1' and vmode_m="00"and gpstate=gp_p3 else
+				m_wdat( 7 downto  0) & m_wdat( 7 downto  0) when gpconven='1' and vmode_m="01" and gpstate=gp_p0 else
+				m_wdat(15 downto  8) & m_wdat(15 downto  8) when gpconven='1' and vmode_m="01" and gpstate=gp_p2 else
 				m_wdat when atype=addr_GRAM and gfxbuf='1' else
 				m_wdat(3 downto 0) & m_wdat(3 downto 0) & m_wdat(3 downto 0) & m_wdat(3 downto 0) when atype=addr_GRAM and gmode="00" else
 				m_wdat(7 downto 0) & m_wdat(7 downto 0) when atype=addr_GRAM and gmode="01" else
@@ -194,7 +195,7 @@ begin
 			"00" when atype=addr_TRAM and rcpybusy='1' else
 			"00" when atype=addr_TRAM and MEN='1' else
 			SWwr when SWen='1' and MEN='0' else
-			gpwr when gpconven='1' and vmode="01" else
+			gpwr when gpconven='1' and vmode_m="01" else
 			b_wrb when atype=addr_GRAM and gmode(1)='1' else
 			b_wrb when atype=addr_GRAM and gfxbuf='1' and m_addr(20)='0' and m_addr(19)='0' else
 			"00" when atype=addr_GRAM and gfxbuf='1' else
@@ -204,7 +205,7 @@ begin
 			b_wrb when atype/=addr_IO else
 			"00";
 	ram_rmw<=
-				gprmw when gpconven='1' and vmode="00" else
+				gprmw when gpconven='1' and vmode_m="00" else
 				"00" when atype=addr_GRAM and gfxbuf='1' else
 				"11" when atype=addr_GRAM and gmode="00" and b_wrb(0)='1' else
 				"00" when atype/=addr_TRAM or MEN='0' else
@@ -256,10 +257,10 @@ begin
 	
 	ram_rmwmask<=
 		not txtmask	when atype=addr_TRAM and MEN='1' else
-		x"000f" when gpconven='1' and vmode="00" and (gpstate=gp_p0 or gpstate=gp_p0w) else
-		x"00f0" when gpconven='1' and vmode="00" and (gpstate=gp_p1 or gpstate=gp_p1w) else
-		x"0f00" when gpconven='1' and vmode="00" and (gpstate=gp_p2 or gpstate=gp_p2w) else
-		x"f000" when gpconven='1' and vmode="00" and (gpstate=gp_p3 or gpstate=gp_p3w) else
+		x"000f" when gpconven='1' and vmode_m="00" and (gpstate=gp_p0 or gpstate=gp_p0w) else
+		x"00f0" when gpconven='1' and vmode_m="00" and (gpstate=gp_p1 or gpstate=gp_p1w) else
+		x"0f00" when gpconven='1' and vmode_m="00" and (gpstate=gp_p2 or gpstate=gp_p2w) else
+		x"f000" when gpconven='1' and vmode_m="00" and (gpstate=gp_p3 or gpstate=gp_p3w) else
 		x"000f" when atype=addr_GRAM and gmode="00" and gsize='1' and m_addr(20)='0' and m_addr(10)='0' else
 		x"00f0" when atype=addr_GRAM and gmode="00" and gsize='1' and m_addr(20)='0' and m_addr(10)='1' else
 		x"0f00" when atype=addr_GRAM and gmode="00" and gsize='1' and m_addr(20)='1' and m_addr(10)='0' else
@@ -451,7 +452,7 @@ begin
 							else
 								case b_wrb is
 								when "01" | "11" =>
-									if(vmode="00")then
+									if(vmode_m="00")then
 										-- The CPU 256-colour page is selected by A19,
 										-- not by UDS/LDS.  A word write still carries
 										-- useful data only in its low byte.
@@ -466,7 +467,7 @@ begin
 										gpstate<=gp_p0;
 									end if;
 								when "10" =>
-									if(vmode="00")then
+									if(vmode_m="00")then
 										-- Even-address byte writes are disconnected in
 										-- the 256-colour CPU view.  Finish without RAM.
 										gpack<='1';
@@ -481,7 +482,7 @@ begin
 						end if;
 					when gp_p0 =>
 						if(ram_ack='1')then
-							if(vmode="00")then
+							if(vmode_m="00")then
 								gp_rdat(3 downto 0)<=ram_rdatq;
 							else
 								gp_rdat(7 downto 0)<=ram_rdat(7 downto 0); -- page 0 = LOW byte
@@ -494,14 +495,14 @@ begin
 						end if;
 					when gp_p0w =>
 						if(m_rd='1')then
-							if(vmode="00")then
+							if(vmode_m="00")then
 								gpstate<=gp_p1;
 							else
 								gpstate<=gp_p2;
 							end if;
 							gprd<='1';
 						else
-							if(vmode="00")then
+							if(vmode_m="00")then
 								gpstate<=gp_p1;
 								gprmw<="11";
 							else
@@ -530,7 +531,7 @@ begin
 							gpstate<=gp_p2;
 							gprd<='1';
 						else
-							if(vmode="00")then
+							if(vmode_m="00")then
 								-- In CPU 256-colour mode a word write is the
 								-- same low-byte write as LDS-only: stop after
 								-- the selected pair of graphic planes.
@@ -550,7 +551,7 @@ begin
 						end if;
 					when gp_p2 =>
 						if(ram_ack='1')then
-							if(vmode="00")then
+							if(vmode_m="00")then
 								gp_rdat(11 downto 8)<=ram_rdatq;
 							else
 								gp_rdat(15 downto 8)<=ram_rdat(15 downto 8); -- page 1 = HIGH byte
@@ -563,7 +564,7 @@ begin
 						end if;
 					when gp_p2w =>
 						if(m_rd='1')then
-							if(vmode="00")then
+							if(vmode_m="00")then
 								gpstate<=gp_p3;
 								gprd<='1';
 							else
@@ -571,7 +572,7 @@ begin
 								gpstate<=gp_end;
 							end if;
 						else
-							if(vmode="00")then
+							if(vmode_m="00")then
 								gpstate<=gp_p3;
 								gprmw<="11";
 							else
