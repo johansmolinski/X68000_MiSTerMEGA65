@@ -167,7 +167,11 @@ port(
 	disk_mode   :in std_logic := '0';
 
 	sxsi_inject :in std_logic := '0';
-	vis_mem     :in std_logic_vector(3 downto 0) := "0000"
+	-- MEGA65 port 2026-10-27: the 68000's bus for the bring-up bus trace (MegaX x68_trace.vhd):
+	-- ASn, RWn, FC(2:0), UDSn, LDSn, address(23:0), '0', data (the CPU's on writes, the
+	-- bus's on reads). Original: the port list ended with vis_mem.
+	vis_mem     :in std_logic_vector(3 downto 0) := "0000";
+	dbg_bus     :out std_logic_vector(47 downto 0)
 );
 end X68K_top;
 
@@ -2881,6 +2885,9 @@ begin
 
 	-- simulate write access of TG68 (Write, byte select, and address select activated at the same time)
 	mpu_rwn <= i_ASn or i_rwn or (mpu_ldsn and mpu_udsn);
+	-- MEGA65 port 2026-10-27: the bus trace port (see the port list)
+	dbg_bus <= i_ASn & i_rwn & mpu_fc & mpu_udsn & mpu_ldsn & mpu_addr & '0' &
+	           (dbus when i_rwn = '1' else mpu_od);
 	mpu_as  <= i_ASn when i_rwn = '1' else mpu_rwn;
 	mpu_oe  <= not i_rwn;
 
