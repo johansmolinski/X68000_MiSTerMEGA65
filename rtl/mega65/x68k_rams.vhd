@@ -34,7 +34,9 @@ entity m65_tdp_ram is
 generic(
 	AW   : integer := 8;
 	DW   : integer := 8;
-	INIT : string  := ""
+	INIT : string  := "none"   -- an init file in M65_INIT_DIR, or "none" (MEGA65 port 2026-10-27:
+	                           -- not "": Vivado 2022.2 stops with an internal error on an
+	                           -- empty string generic once the design also uses XPM)
 );
 port(
 	clk_a  : in  std_logic;
@@ -60,7 +62,7 @@ architecture rtl of m65_tdp_ram is
 		variable v     : std_logic_vector(((DW+3)/4)*4-1 downto 0);
 		variable r     : ram_t := (others => (others => '0'));
 	begin
-		if name'length > 0 then
+		if name /= "none" then
 			file_open(st, f, name, read_mode);
 			if st /= open_ok then   -- ghdl's synthesis does not stop at the assert
 				report "m65_tdp_ram: cannot open " & name severity failure;

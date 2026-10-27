@@ -93,8 +93,8 @@ module x68k_native_crtc
     wire c_hf = c_hfreq | c_VMODE[0];
     wire [3:0] c_mode = {c_HRL, c_hf, c_HMODE};
     wire scan_ok = rstn && scan_ready && cfg_valid && (c_mode == active_mode);
-    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado 2022.2
-    // stops with an internal error on the valueless "preserve"). Original:
+    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado ignores
+    // them; these registers are clock-domain synchronizers). Original:
     // (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS", preserve *) reg [2:0] scan_reset;
     (* ASYNC_REG = "TRUE" *) reg [2:0] scan_reset;
     always @(posedge pclk or negedge scan_ok)
@@ -175,20 +175,20 @@ module x68k_native_crtc
             line_payload <= {~scan_LRAMSEL, frame_event};
         end
     end
-    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado 2022.2
-    // stops with an internal error on the valueless "preserve"). Original:
+    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado ignores
+    // them; these registers are clock-domain synchronizers). Original:
     // (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS", preserve *) reg [2:0] render_reset;
     (* ASYNC_REG = "TRUE" *) reg [2:0] render_reset;
     always @(posedge gclk or negedge scan_reset_n)
         if (!scan_reset_n) render_reset <= 0;
         else render_reset <= {render_reset[1:0],1'b1};
     assign render_reset_n = render_reset[2];
-    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado 2022.2
-    // stops with an internal error on the valueless "preserve"). Original:
+    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado ignores
+    // them; these registers are clock-domain synchronizers). Original:
     // (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS", preserve *) reg [2:0] line_sync;
     (* ASYNC_REG = "TRUE" *) reg [2:0] line_sync;
-    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado 2022.2
-    // stops with an internal error on the valueless "preserve"). Original:
+    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado ignores
+    // them; these registers are clock-domain synchronizers). Original:
     // (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS", preserve *) reg [1:0] hb_sync, vb_sync;
     (* ASYNC_REG = "TRUE" *) reg [1:0] hb_sync, vb_sync;
     reg line_seen, render_bank;

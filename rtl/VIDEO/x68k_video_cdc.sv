@@ -6,8 +6,8 @@ module x68k_video_snapshot #(parameter WIDTH=1) (
 );
     reg [WIDTH-1:0] held;
     reg req, ack, sent;
-    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado 2022.2
-    // stops with an internal error on the valueless "preserve"). Original:
+    // MEGA65 port 2026-10-27: ASYNC_REG instead of the Quartus attributes (Vivado ignores
+    // them; these registers are clock-domain synchronizers). Original:
     // (* altera_attribute = "-name SYNCHRONIZER_IDENTIFICATION FORCED_IF_ASYNCHRONOUS", preserve *) reg [1:0] req_sync, ack_sync;
     (* ASYNC_REG = "TRUE" *) reg [1:0] req_sync, ack_sync;
     always @(posedge src_clk or negedge reset_n) begin
