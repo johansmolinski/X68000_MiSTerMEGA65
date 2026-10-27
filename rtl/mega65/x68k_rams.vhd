@@ -385,9 +385,10 @@ begin
 end rtl;
 
 ------------------------------------------------------------------------------
--- rtl/GPALETTE/gpram.vhd: TDP 128x8, two clocks.
+-- rtl/GPALETTE/gpram.vhd: TDP 128x8, two clocks (port B is only read: distributed RAM).
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.numeric_std.all;
 
 entity gpram is
 port(
@@ -404,10 +405,38 @@ port(
 );
 end gpram;
 
+-- MEGA65 port 2026-10-27: distributed RAM with registered addresses (the altsyncram's own
+-- behaviour: address registered, output unregistered). grpal.vhd never writes port B; as a
+-- block RAM its address was the end of an 80 MHz path through the compositor (megax-g,
+-- -0.150 ns before post-route optimisation); a LUT RAM sits next to that logic.
 architecture rtl of gpram is
+	type ram_t is array(0 to 127) of std_logic_vector(7 downto 0);
+	signal ram    : ram_t := (others => (others => '0'));
+	signal addr_a : std_logic_vector(6 downto 0) := (others => '0');
+	signal addr_b : std_logic_vector(6 downto 0) := (others => '0');
+	attribute ram_style : string;
+	attribute ram_style of ram : signal is "distributed";
 begin
-	ram: entity work.m65_tdp_ram generic map(7, 8)
-	port map(clock_a, address_a, data_a, wren_a, q_a, clock_b, address_b, data_b, wren_b, q_b);
+	process(clock_a)
+	begin
+		if rising_edge(clock_a) then
+			if wren_a = '1' then
+				ram(to_integer(unsigned(address_a))) <= data_a;
+			end if;
+			addr_a <= address_a;
+		end if;
+	end process;
+
+	process(clock_b)
+	begin
+		if rising_edge(clock_b) then
+			addr_b <= address_b;
+		end if;
+	end process;
+
+	-- write-first on port A, as before: the read after a write sees the new byte
+	q_a <= ram(to_integer(unsigned(addr_a)));
+	q_b <= ram(to_integer(unsigned(addr_b)));
 end rtl;
 
 ------------------------------------------------------------------------------
