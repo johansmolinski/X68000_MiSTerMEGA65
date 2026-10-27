@@ -220,6 +220,7 @@ signal	mpu_udsn			:std_logic;
 signal	mpu_ldsn			:std_logic;
 signal	mpu_rwn			:std_logic;
 signal   mpu_fc    :std_logic_vector(2 downto 0);
+signal   dbg_data  :std_logic_vector(15 downto 0);   -- MEGA65 port 2026-10-27: dbg_bus
 signal   i_rwn     :std_logic;
 signal   i_ASn     :std_logic;
 
@@ -2886,8 +2887,8 @@ begin
 	-- simulate write access of TG68 (Write, byte select, and address select activated at the same time)
 	mpu_rwn <= i_ASn or i_rwn or (mpu_ldsn and mpu_udsn);
 	-- MEGA65 port 2026-10-27: the bus trace port (see the port list)
-	dbg_bus <= i_ASn & i_rwn & mpu_fc & mpu_udsn & mpu_ldsn & mpu_addr & '0' &
-	           (dbus when i_rwn = '1' else mpu_od);
+	dbg_data <= dbus when i_rwn = '1' else mpu_od;
+	dbg_bus <= i_ASn & i_rwn & mpu_fc & mpu_udsn & mpu_ldsn & mpu_addr & '0' & dbg_data;
 	mpu_as  <= i_ASn when i_rwn = '1' else mpu_rwn;
 	mpu_oe  <= not i_rwn;
 
