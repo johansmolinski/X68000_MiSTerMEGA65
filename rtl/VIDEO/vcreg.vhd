@@ -405,8 +405,20 @@ begin
 	RCbgn<='1' when (addr(23 downto 1)=addr_RC(23 downto 1) and wr(0)='1' and wdat(3)='1') or (rRCmode='1' and rcdst_wr='1') else '0';
 	--RCbgn<='1' when addr(23 downto 1)=addr_RC(23 downto 1) and wr(0)='1' and wdat(3)='1' else '0';
 	RCend<='1' when addr(23 downto 1)=addr_RC(23 downto 1) and wr(0)='1' and wdat(3)='0' else '0';
-	FCbgn<='1' when addr(23 downto 1)=addr_FC(23 downto 1) and wr(0)='1' and wdat(1)='1' else '0';
-	FCend<='1' when addr(23 downto 1)=addr_FC(23 downto 1) and wr(0)='1' and wdat(1)='0' else '0';
+	-- MEGA65 port 2026-11-02: FCbgn/FCend registered on clk. They go to vidcont, which samples
+	-- them on every vidclk (2 x clk, vid_ce = '1'); the combinational decode took up to 18.6 ns
+	-- (allowed by the clk -> vidclk multicycle of X68000.sdc), so the vidclk edge in the middle of
+	-- a clk period could see a phantom FCend that cancelled the fast clear just requested: the
+	-- busy bit never came and programs polling $E80481 waited forever (an SxSI game pack, TwinBee).
+	-- Original:
+	-- FCbgn<='1' when addr(23 downto 1)=addr_FC(23 downto 1) and wr(0)='1' and wdat(1)='1' else '0';
+	-- FCend<='1' when addr(23 downto 1)=addr_FC(23 downto 1) and wr(0)='1' and wdat(1)='0' else '0';
+	process(clk)begin
+		if rising_edge(clk) then
+			if(addr(23 downto 1)=addr_FC(23 downto 1) and wr(0)='1' and wdat(1)='1')then FCbgn<='1'; else FCbgn<='0'; end if;
+			if(addr(23 downto 1)=addr_FC(23 downto 1) and wr(0)='1' and wdat(1)='0')then FCend<='1'; else FCend<='0'; end if;
+		end if;
+	end process;
 	VIbgn<='1' when addr(23 downto 1)=addr_VI(23 downto 1) and wr(0)='1' and wdat(0)='1' else '0';
 	VIend<='1' when addr(23 downto 1)=addr_VI(23 downto 1) and wr(0)='1' and wdat(0)='0' else '0';
 	
