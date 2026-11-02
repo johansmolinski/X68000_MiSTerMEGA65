@@ -171,7 +171,12 @@ port(
 	-- ASn, RWn, FC(2:0), UDSn, LDSn, address(23:0), '0', data (the CPU's on writes, the
 	-- bus's on reads). Original: the port list ended with vis_mem.
 	vis_mem     :in std_logic_vector(3 downto 0) := "0000";
-	dbg_bus     :out std_logic_vector(47 downto 0)
+	dbg_bus     :out std_logic_vector(47 downto 0);
+	-- MEGA65 port 2026-11-02: the OPM bus wait for the bring-up (MegaX x68_trace.vhd: the board
+	-- hangs on the first OPM access): 1..0 opm_wstate, 2 iowait_opm, 3 iowait_sasi,
+	-- 4 iowait_rcpy, 5 iowait, 6 srstn, 7 mpu_reset_n, 8 cpu_rstn, 9 opm_csn, 10 b_rdn,
+	-- 11 b_wrn(0), 12 opm_ce(0), 13 i_ASn, 15..14 '0'
+	dbg_opm     :out std_logic_vector(15 downto 0)
 );
 end X68K_top;
 
@@ -2889,6 +2894,10 @@ begin
 	-- MEGA65 port 2026-10-27: the bus trace port (see the port list)
 	dbg_data <= dbus when i_rwn = '1' else mpu_od;
 	dbg_bus <= i_ASn & i_rwn & mpu_fc & mpu_udsn & mpu_ldsn & mpu_addr & '0' & dbg_data;
+	-- MEGA65 port 2026-11-02: the OPM bus wait probe (see the port list)
+	dbg_opm <= "00" & i_ASn & opm_ce(0) & b_wrn(0) & b_rdn & opm_csn & cpu_rstn & mpu_reset_n & srstn &
+	           iowait & iowait_rcpy & iowait_sasi & iowait_opm &
+	           conv_std_logic_vector(opm_wstate, 2);
 	mpu_as  <= i_ASn when i_rwn = '1' else mpu_rwn;
 	mpu_oe  <= not i_rwn;
 
