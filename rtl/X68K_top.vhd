@@ -4669,11 +4669,17 @@ begin
 		end if;
 	end process;
 
+	-- MEGA65 port 2026-11-02: the clock edge and the enable apart. Vivado built the original
+	-- condition (below) into a clock enable that took sndclk itself as data, so the enable was
+	-- never seen at the edge: opm_wstate stayed 0 and the first OPM access hung the 68000's bus
+	-- for good (megax-w probe; ghdl and Quartus read it as an edge with an enable).
+	-- Original: elsif(sndclk' event and sndclk='1' and opm_ce(0) = '1')then
 	process(sndclk,srstn)
 	begin
 		if(srstn='0')then
 			opm_wstate<=0;
-		elsif(sndclk' event and sndclk='1' and opm_ce(0) = '1')then
+		elsif rising_edge(sndclk) then
+		if(opm_ce(0) = '1')then
 			case opm_wstate is
 			when 0 =>
 				if(opm_csn='0' and (b_wrn(0)='0' or b_rdn='0'))then
@@ -4690,6 +4696,7 @@ begin
 			when others =>
 				opm_wstate<=0;
 			end case;
+		end if;
 		end if;
 	end process;
 	
