@@ -914,9 +914,22 @@ g80_ddat<=	g1_rdat( 7 downto 4) & g0_rdat( 3 downto 0);
 				gclrendrq<='0';
 			elsif (vid_ce = '1') then
 				lbwr<='0';
+				-- MEGA65 port 2026-11-02: a fast clear request clears a stop request still pending
+				-- from an earlier write to R21 ($E80481: bit 1 fast clear, bit 3 raster copy), and a
+				-- stop is only taken when a clear is pending or running. Before, every write with bit
+				-- 1 = 0 (each raster copy start or end) left gclrendrq set until the next hcomp, which
+				-- then cancelled a fast clear requested later in the same line: the busy bit never
+				-- came and the program polling $E80481 waited forever (an SxSI system disk boot: $00,
+				-- then $02 80 bus cycles later). Original:
+				-- if(gclrbgn='1' and gclrbusyb='0')then
+				-- 	gclrbgnrq<='1';
+				-- elsif(gclrend='1')then
+				-- 	gclrendrq<='1';
+				-- end if;
 				if(gclrbgn='1' and gclrbusyb='0')then
 					gclrbgnrq<='1';
-				elsif(gclrend='1')then
+					gclrendrq<='0';
+				elsif(gclrend='1' and (gclrbusyb='1' or gclrbgnrq='1'))then
 					gclrendrq<='1';
 				end if;
 				if(hcomp='1')then
