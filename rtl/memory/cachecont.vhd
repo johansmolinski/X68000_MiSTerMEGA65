@@ -136,7 +136,12 @@ port(
 	fd_ce   :in std_logic := '1';
 	rclk	:in std_logic;
 	ram_ce  :in std_logic := '1';
-	rstn	:in std_logic
+	rstn	:in std_logic;
+	-- MEGA65 port 2026-11-03 (temporary): the SDRAM traffic probe for the R3 port study (MegaX
+	-- x68_r3probe.vhd, doc/plan.md section 4 item 8): the state's class,
+	-- 0 idle, 1 refresh, 2 GVRAM line read, 3 CPU read fill, 4 CPU write-back, 5 GVRAM fast
+	-- clear, 6 FDE/FEC (disks), 7 the rest. Original: the port list ended with rstn.
+	dbg_class	:out std_logic_vector(2 downto 0)
 );
 end cachecont;
 
@@ -509,6 +514,19 @@ begin
 	b_wdatm<=	b_wdat when b_wr/="00" else
 				(rmw_rdat and (not b_rmwmsk)) or (b_wdat and b_rmwmsk) when b_rmw/="00" else
 				(others=>'0');
+
+	-- MEGA65 port 2026-11-03 (temporary): the SDRAM traffic probe for the R3 port study (MegaX
+	-- x68_r3probe.vhd, doc/plan.md section 4 item 8): see the port list
+	dbg_class<=	"000"	when RAM_STATE=ST_IDLE else
+				"001"	when RAM_STATE=ST_REFRSH else
+				"010"	when RAM_STATE=ST_G00READ or RAM_STATE=ST_G01READ or RAM_STATE=ST_G02READ or RAM_STATE=ST_G03READ or
+				             RAM_STATE=ST_G10READ or RAM_STATE=ST_G11READ or RAM_STATE=ST_G12READ or RAM_STATE=ST_G13READ else
+				"011"	when RAM_STATE=ST_BREAD else
+				"100"	when RAM_STATE=ST_BWRITE else
+				"101"	when RAM_STATE=ST_G0CLR or RAM_STATE=ST_G1CLR or RAM_STATE=ST_G2CLR or RAM_STATE=ST_G3CLR or
+				             RAM_STATE=ST_GCLRDIRECT or RAM_STATE=ST_GCLRREAD or RAM_STATE=ST_GCLRWRITE else
+				"110"	when RAM_STATE=ST_FDEREAD or RAM_STATE=ST_FDEWRITE or RAM_STATE=ST_FECREAD or RAM_STATE=ST_FECWRITE else
+				"111";
 
 	rambwidth<=	brsize	when RAM_STATE=ST_BREAD else
 				brsize	when RAM_STATE=ST_BWRITE else

@@ -176,7 +176,12 @@ port(
 	-- hangs on the first OPM access): 1..0 opm_wstate, 2 iowait_opm, 3 iowait_sasi,
 	-- 4 iowait_rcpy, 5 iowait, 6 srstn, 7 mpu_reset_n, 8 cpu_rstn, 9 opm_csn, 10 b_rdn,
 	-- 11 b_wrn(0), 12 opm_ce(0), 13 i_ASn, 15..14 '0'
-	dbg_opm     :out std_logic_vector(15 downto 0)
+	dbg_opm     :out std_logic_vector(15 downto 0);
+	-- MEGA65 port 2026-11-03 (temporary): the SDRAM traffic probe for the R3 port study (MegaX
+	-- x68_r3probe.vhd, doc/plan.md section 4 item 8), ramclk: 51 the CPU's SDRAM read
+	-- (sdram_ram_rd), 50 its acknowledge (mem_ram_ack), 49 HCOMP, 48 VPSTART, 47..0 memcont's
+	-- dbg_o. Original: the port list ended with dbg_opm.
+	dbg_mem     :out std_logic_vector(51 downto 0)
 );
 end X68K_top;
 
@@ -310,6 +315,7 @@ signal	LVIDRD	:std_logic_vector(15 downto 0);
 
 signal	HCOMP	:std_logic;
 signal	VPSTART	:std_logic;
+signal	dbg_mem_ram	:std_logic_vector(47 downto 0);	-- MEGA65 port 2026-11-03 (temporary): R3 probe
 --Video
 signal	VID_HRTC	:std_logic;
 signal	VID_HRTCd	:std_logic;
@@ -1085,7 +1091,8 @@ port(
 	fd_ce   :in std_logic := '1';
 	rclk	:in std_logic;
 	ram_ce  :in std_logic := '1';
-	rstn	:in std_logic
+	rstn	:in std_logic;
+	dbg_o	:out std_logic_vector(47 downto 0)	-- MEGA65 port 2026-11-03 (temporary): R3 probe
 );
 end component;
 
@@ -3331,8 +3338,11 @@ begin
 		vclk		=>vidclk,
 		fclk		=>fdcclk,
 		rclk		=>ramclk,
-		rstn		=>mem_rstn
+		rstn		=>mem_rstn,
+		dbg_o		=>dbg_mem_ram	-- MEGA65 port 2026-11-03 (temporary): R3 probe
 	);
+	-- MEGA65 port 2026-11-03 (temporary): R3 probe port (see the port list)
+	dbg_mem <= sdram_ram_rd & mem_ram_ack & HCOMP & VPSTART & dbg_mem_ram;
 
 	TVRAM_DDR_I : tvram_ddr port map(
 		rclk              => ramclk,

@@ -1,6 +1,7 @@
 LIBRARY	IEEE;
 USE	IEEE.STD_LOGIC_1164.ALL;
 USE	IEEE.STD_LOGIC_UNSIGNED.ALL;
+USE	IEEE.NUMERIC_STD.ALL;	-- MEGA65 port 2026-11-03 (temporary): R3 probe (to_unsigned)
 
 entity memcont is
 generic(
@@ -136,7 +137,13 @@ port(
 	fd_ce   :in std_logic := '1';
 	rclk	:in std_logic;
 	ram_ce  :in std_logic := '1';
-	rstn	:in std_logic
+	rstn	:in std_logic;
+	-- MEGA65 port 2026-11-03 (temporary): the SDRAM traffic probe for the R3 port study (MegaX
+	-- x68_r3probe.vhd, doc/plan.md section 4 item 8) (rclk):
+	-- 47..45 cachecont's state class, 44 rd, 43 wr, 42 busy, 41 de, 40 abort of the SDRAMC
+	-- command lines, 39..36 bwidth, 35..32 '0', 31..16 addr_high, 15..8 bgnaddr, 7..0 endaddr.
+	-- Original: the port list ended with rstn.
+	dbg_o	:out std_logic_vector(47 downto 0)
 );
 end memcont;
 
@@ -160,6 +167,7 @@ signal	ramde		:std_logic;
 signal	ramrdat		:std_logic_vector(15 downto 0);
 signal	ramwdat		:std_logic_vector(15 downto 0);
 signal	ramwe		:std_logic_vector(1 downto 0);
+signal	dbg_class	:std_logic_vector(2 downto 0);	-- MEGA65 port 2026-11-03 (temporary): R3 probe
 
 component SDRAMC
 generic(
@@ -339,7 +347,8 @@ port(
 	fd_ce   :in std_logic := '1';
 	rclk	:in std_logic;
 	ram_ce  :in std_logic := '1';
-	rstn	:in std_logic
+	rstn	:in std_logic;
+	dbg_class	:out std_logic_vector(2 downto 0)	-- MEGA65 port 2026-11-03 (temporary): R3 probe
 );
 end component;
 
@@ -514,9 +523,16 @@ begin
 		fd_ce  =>fd_ce,
 		rclk	=>rclk,
 		ram_ce  =>ram_ce,
-		rstn	=>rstn
+		rstn	=>rstn,
+		dbg_class	=>dbg_class	-- MEGA65 port 2026-11-03 (temporary): R3 probe
 	);
 
 	initdone<=ram_inidone and cache_inidone;
+
+	-- MEGA65 port 2026-11-03 (temporary): the SDRAM traffic probe for the R3 port study (MegaX
+	-- x68_r3probe.vhd, doc/plan.md section 4 item 8): see the port list
+	dbg_o<=	dbg_class & ramrd & ramwr & rambusy & ramde & ramabort &
+			std_logic_vector(to_unsigned(rambwidth,4)) & "0000" &
+			ramaddrh & rambgnaddr & ramendaddr;
 
 end rtl;
