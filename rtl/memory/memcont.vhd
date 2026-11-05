@@ -11,7 +11,10 @@ generic(
 	BRBLOCKS		:integer	:=4;
 	CLKMHZ		:integer 	:=80;		--SDRAM clk MHz
 	REFINT	:integer	:=3;
-	REFCNT	:integer	:=64
+	-- MEGA65 port 2026-11-04: EXT_RAMC (see the port list). Original: REFCNT ended the generics.
+	-- REFCNT	:integer	:=64
+	REFCNT	:integer	:=64;
+	EXT_RAMC	:boolean	:=false
 );
 port(
 	-- SDRAM PORTS
@@ -143,7 +146,26 @@ port(
 	-- 47..45 cachecont's state class, 44 rd, 43 wr, 42 busy, 41 de, 40 abort of the SDRAMC
 	-- command lines, 39..36 bwidth, 35..32 '0', 31..16 addr_high, 15..8 bgnaddr, 7..0 endaddr.
 	-- Original: the port list ended with rstn.
-	dbg_o	:out std_logic_vector(47 downto 0)
+	dbg_o	:out std_logic_vector(47 downto 0);
+	-- MEGA65 port 2026-11-04: an external controller in place of SDRAMC (generic EXT_RAMC, MegaX
+	-- x68_hrmem.vhd: the R3 board, everything in the HyperRAM): SDRAMC's port list towards
+	-- cachecont, rclk. Unused with EXT_RAMC false.
+	xr_addrh_o	:out std_logic_vector(awidth-9 downto 0);
+	xr_bgn_o	:out std_logic_vector(7 downto 0);
+	xr_end_o	:out std_logic_vector(7 downto 0);
+	xr_bwidth_o	:out std_logic_vector(3 downto 0);
+	xr_wrdat_o	:out std_logic_vector(15 downto 0);
+	xr_we_o		:out std_logic_vector(1 downto 0);
+	xr_rd_o		:out std_logic;
+	xr_wr_o		:out std_logic;
+	xr_refrsh_o	:out std_logic;
+	xr_abort_o	:out std_logic;
+	xr_addr_rc_i	:in std_logic_vector(7 downto 0)	:=(others=>'0');
+	xr_addr_wc_i	:in std_logic_vector(7 downto 0)	:=(others=>'0');
+	xr_rddat_i	:in std_logic_vector(15 downto 0)	:=(others=>'0');
+	xr_de_i		:in std_logic	:='0';
+	xr_busy_i	:in std_logic	:='0';
+	xr_initdone_i	:in std_logic	:='0'
 );
 end memcont;
 
@@ -168,6 +190,13 @@ signal	ramrdat		:std_logic_vector(15 downto 0);
 signal	ramwdat		:std_logic_vector(15 downto 0);
 signal	ramwe		:std_logic_vector(1 downto 0);
 signal	dbg_class	:std_logic_vector(2 downto 0);	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+-- MEGA65 port 2026-11-04: SDRAMC's outputs, chosen against the xr_ ports (EXT_RAMC)
+signal	sdr_addrrc	:std_logic_vector(7 downto 0);
+signal	sdr_addrwc	:std_logic_vector(7 downto 0);
+signal	sdr_rdat	:std_logic_vector(15 downto 0);
+signal	sdr_de		:std_logic;
+signal	sdr_busy	:std_logic;
+signal	sdr_inidone	:std_logic;
 
 component SDRAMC
 generic(
@@ -353,6 +382,9 @@ port(
 end component;
 
 begin
+	-- MEGA65 port 2026-11-04: SDRAMC only with EXT_RAMC false; otherwise its lines go to the xr_ ports
+	-- (original: the instance without the generate)
+	G_SDRAMC : if not EXT_RAMC generate
 	RAMC	:SDRAMC generic map(
 		AWIDTH		=>AWIDTH,
 		CAWIDTH		=>CAWIDTH,
@@ -375,23 +407,57 @@ begin
 		bgnaddr		=>rambgnaddr,
 		endaddr		=>ramendaddr,
 		bwidth		=>rambwidth,
-		addr_rc		=>ramaddrrc,
-		addr_wc		=>ramaddrwc,
-		rddat		=>ramrdat,
+		addr_rc		=>sdr_addrrc,	-- MEGA65 port 2026-11-04: was ramaddrrc (now chosen below, EXT_RAMC)
+		addr_wc		=>sdr_addrwc,	-- was ramaddrwc
+		rddat		=>sdr_rdat,		-- was ramrdat
 		wrdat		=>ramwdat,
-		de			=>ramde,
+		de			=>sdr_de,		-- was ramde
 		we			=>ramwe,
 		rd			=>ramrd,
 		wr			=>ramwr,
 		refrsh	=>ramrefrsh,
 		abort		=>ramabort,
-		busy		=>rambusy,
+		busy		=>sdr_busy,		-- was rambusy
 
-		initdone	=>ram_inidone,
+		initdone	=>sdr_inidone,	-- was ram_inidone
 		clk			=>rclk,
 		ce          =>ram_ce,
 		rstn		=>rstn
 	);
+	end generate G_SDRAMC;
+
+	-- MEGA65 port 2026-11-04: the external controller (MegaX x68_hrmem.vhd), the SDRAM pins idle
+	G_EXTRAMC : if EXT_RAMC generate
+		PMEMCKE		<='0';
+		PMEMCS_N	<='1';
+		PMEMRAS_N	<='1';
+		PMEMCAS_N	<='1';
+		PMEMWE_N	<='1';
+		PMEMUDQ		<='1';
+		PMEMLDQ		<='1';
+		PMEMBA1		<='0';
+		PMEMBA0		<='0';
+		PMEMADR		<=(others=>'0');
+		PMEMDAT		<=(others=>'Z');
+		xr_addrh_o	<=ramaddrh;
+		xr_bgn_o	<=rambgnaddr;
+		xr_end_o	<=ramendaddr;
+		xr_bwidth_o	<=std_logic_vector(to_unsigned(rambwidth,4));
+		xr_wrdat_o	<=ramwdat;
+		xr_we_o		<=ramwe;
+		xr_rd_o		<=ramrd;
+		xr_wr_o		<=ramwr;
+		xr_refrsh_o	<=ramrefrsh;
+		xr_abort_o	<=ramabort;
+	end generate G_EXTRAMC;
+	-- (not inside G_EXTRAMC: ghdl's synthesis dropped assignments from the ports to these
+	-- signals there, tb/sim; outside a generate they come through)
+	ramaddrrc	<=xr_addr_rc_i	when EXT_RAMC else sdr_addrrc;
+	ramaddrwc	<=xr_addr_wc_i	when EXT_RAMC else sdr_addrwc;
+	ramrdat		<=xr_rddat_i	when EXT_RAMC else sdr_rdat;
+	ramde		<=xr_de_i		when EXT_RAMC else sdr_de;
+	rambusy		<=xr_busy_i		when EXT_RAMC else sdr_busy;
+	ram_inidone	<=xr_initdone_i	when EXT_RAMC else sdr_inidone;
 
 	b_rd_m	<='0' when cache_inidone='0' else b_rd;
 	b_wr_m	<="00" when cache_inidone='0' else b_wr;

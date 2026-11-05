@@ -12,7 +12,11 @@ generic(
 	FCFREQ		:integer	:=40000;		--FDC clock
 	ACFREQ		:integer	:=40000;		--Audio clock
 	DACFREQ		:integer	:=16000;		--Audio DAC freq
-	USE_XDF		:integer	:=2				--dual: both D88 and XDF/DIM disk emulators
+	-- MEGA65 port 2026-11-04: EXT_RAMC (memcont: an external controller in place of SDRAMC, the xr_
+	-- ports). Original: USE_XDF ended the generics.
+	-- USE_XDF		:integer	:=2				--dual: both D88 and XDF/DIM disk emulators
+	USE_XDF		:integer	:=2;			--dual: both D88 and XDF/DIM disk emulators
+	EXT_RAMC	:boolean	:=false
 );
 port(
 	ramclk	:in std_logic;
@@ -181,7 +185,26 @@ port(
 	-- x68_r3probe.vhd, doc/plan.md section 4 item 8), ramclk: 51 the CPU's SDRAM read
 	-- (sdram_ram_rd), 50 its acknowledge (mem_ram_ack), 49 HCOMP, 48 VPSTART, 47..0 memcont's
 	-- dbg_o. Original: the port list ended with dbg_opm.
-	dbg_mem     :out std_logic_vector(51 downto 0)
+	dbg_mem     :out std_logic_vector(51 downto 0);
+	-- MEGA65 port 2026-11-04: an external controller in place of SDRAMC (generic EXT_RAMC to memcont, MegaX
+	-- x68_hrmem.vhd: the R3 board, everything in the HyperRAM): SDRAMC's port list towards
+	-- cachecont, rclk. Unused with EXT_RAMC false.
+	xr_addrh_o	:out std_logic_vector(15 downto 0);
+	xr_bgn_o	:out std_logic_vector(7 downto 0);
+	xr_end_o	:out std_logic_vector(7 downto 0);
+	xr_bwidth_o	:out std_logic_vector(3 downto 0);
+	xr_wrdat_o	:out std_logic_vector(15 downto 0);
+	xr_we_o		:out std_logic_vector(1 downto 0);
+	xr_rd_o		:out std_logic;
+	xr_wr_o		:out std_logic;
+	xr_refrsh_o	:out std_logic;
+	xr_abort_o	:out std_logic;
+	xr_addr_rc_i	:in std_logic_vector(7 downto 0)	:=(others=>'0');
+	xr_addr_wc_i	:in std_logic_vector(7 downto 0)	:=(others=>'0');
+	xr_rddat_i	:in std_logic_vector(15 downto 0)	:=(others=>'0');
+	xr_de_i		:in std_logic	:='0';
+	xr_busy_i	:in std_logic	:='0';
+	xr_initdone_i	:in std_logic	:='0'
 );
 end X68K_top;
 
@@ -965,7 +988,10 @@ generic(
 	BRBLOCKS		:integer	:=4;
 	CLKMHZ		:integer 	:=120;		--SDRAM clk MHz
 	REFINT	:integer	:=3;
-	REFCNT	:integer	:=64
+	-- MEGA65 port 2026-11-04: EXT_RAMC. Original: REFCNT ended the generics.
+	-- REFCNT	:integer	:=64
+	REFCNT	:integer	:=64;
+	EXT_RAMC	:boolean	:=false
 );
 port(
 	-- SDRAM PORTS
@@ -1092,7 +1118,24 @@ port(
 	rclk	:in std_logic;
 	ram_ce  :in std_logic := '1';
 	rstn	:in std_logic;
-	dbg_o	:out std_logic_vector(47 downto 0)	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+	dbg_o	:out std_logic_vector(47 downto 0);	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+	-- MEGA65 port 2026-11-04: the external controller's ports (see memcont)
+	xr_addrh_o	:out std_logic_vector(awidth-9 downto 0);
+	xr_bgn_o	:out std_logic_vector(7 downto 0);
+	xr_end_o	:out std_logic_vector(7 downto 0);
+	xr_bwidth_o	:out std_logic_vector(3 downto 0);
+	xr_wrdat_o	:out std_logic_vector(15 downto 0);
+	xr_we_o		:out std_logic_vector(1 downto 0);
+	xr_rd_o		:out std_logic;
+	xr_wr_o		:out std_logic;
+	xr_refrsh_o	:out std_logic;
+	xr_abort_o	:out std_logic;
+	xr_addr_rc_i	:in std_logic_vector(7 downto 0)	:=(others=>'0');
+	xr_addr_wc_i	:in std_logic_vector(7 downto 0)	:=(others=>'0');
+	xr_rddat_i	:in std_logic_vector(15 downto 0)	:=(others=>'0');
+	xr_de_i		:in std_logic	:='0';
+	xr_busy_i	:in std_logic	:='0';
+	xr_initdone_i	:in std_logic	:='0'
 );
 end component;
 
@@ -3223,7 +3266,10 @@ begin
 		BRBLOCKS		=>16,
 		CLKMHZ		=>RCFREQ,
 		REFINT			=>10,
-		REFCNT		=>64
+		-- MEGA65 port 2026-11-04: EXT_RAMC. Original: REFCNT ended the generic map.
+		-- REFCNT		=>64
+		REFCNT		=>64,
+		EXT_RAMC	=>EXT_RAMC
 	) port map(
 		PMEMCKE		=>pMemCke,
 		PMEMCS_N	=>pMemCs_n,
@@ -3339,7 +3385,24 @@ begin
 		fclk		=>fdcclk,
 		rclk		=>ramclk,
 		rstn		=>mem_rstn,
-		dbg_o		=>dbg_mem_ram	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+		dbg_o		=>dbg_mem_ram,	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+		-- MEGA65 port 2026-11-04: the external controller (see the port list)
+		xr_addrh_o	=>xr_addrh_o,
+		xr_bgn_o	=>xr_bgn_o,
+		xr_end_o	=>xr_end_o,
+		xr_bwidth_o	=>xr_bwidth_o,
+		xr_wrdat_o	=>xr_wrdat_o,
+		xr_we_o		=>xr_we_o,
+		xr_rd_o		=>xr_rd_o,
+		xr_wr_o		=>xr_wr_o,
+		xr_refrsh_o	=>xr_refrsh_o,
+		xr_abort_o	=>xr_abort_o,
+		xr_addr_rc_i	=>xr_addr_rc_i,
+		xr_addr_wc_i	=>xr_addr_wc_i,
+		xr_rddat_i	=>xr_rddat_i,
+		xr_de_i		=>xr_de_i,
+		xr_busy_i	=>xr_busy_i,
+		xr_initdone_i	=>xr_initdone_i
 	);
 	-- MEGA65 port 2026-11-03 (temporary): R3 probe port (see the port list)
 	dbg_mem <= sdram_ram_rd & mem_ram_ack & HCOMP & VPSTART & dbg_mem_ram;
