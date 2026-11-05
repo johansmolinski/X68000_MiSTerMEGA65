@@ -147,6 +147,8 @@ port(
 	-- command lines, 39..36 bwidth, 35..32 '0', 31..16 addr_high, 15..8 bgnaddr, 7..0 endaddr.
 	-- Original: the port list ended with rstn.
 	dbg_o	:out std_logic_vector(47 downto 0);
+	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, cachecont's dbg2_o
+	dbg2_o	:out std_logic_vector(1023 downto 0);
 	-- MEGA65 port 2026-11-04: an external controller in place of SDRAMC (generic EXT_RAMC, MegaX
 	-- x68_hrmem.vhd: the R3 board, everything in the HyperRAM): SDRAMC's port list towards
 	-- cachecont, rclk. Unused with EXT_RAMC false.
@@ -377,7 +379,8 @@ port(
 	rclk	:in std_logic;
 	ram_ce  :in std_logic := '1';
 	rstn	:in std_logic;
-	dbg_class	:out std_logic_vector(2 downto 0)	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+	dbg_class	:out std_logic_vector(2 downto 0);	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+	dbg2_o	:out std_logic_vector(1023 downto 0)	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up
 );
 end component;
 
@@ -590,7 +593,8 @@ begin
 		rclk	=>rclk,
 		ram_ce  =>ram_ce,
 		rstn	=>rstn,
-		dbg_class	=>dbg_class	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+		dbg_class	=>dbg_class,	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+		dbg2_o	=>dbg2_o	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up
 	);
 
 	initdone<=ram_inidone and cache_inidone;

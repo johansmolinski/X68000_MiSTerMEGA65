@@ -141,7 +141,11 @@ port(
 	-- x68_r3probe.vhd, doc/plan.md section 4 item 8): the state's class,
 	-- 0 idle, 1 refresh, 2 GVRAM line read, 3 CPU read fill, 4 CPU write-back, 5 GVRAM fast
 	-- clear, 6 FDE/FEC (disks), 7 the rest. Original: the port list ended with rstn.
-	dbg_class	:out std_logic_vector(2 downto 0)
+	dbg_class	:out std_logic_vector(2 downto 0);
+	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up (MegaX doc/history.md, the IPL's read fill
+	-- that never ends on the R6): the state of the read blocks, 64 words of 16 bits (see dbg2_o
+	-- below; rclk, sclk and b_addr's domain mixed: read while it stands still)
+	dbg2_o	:out std_logic_vector(1023 downto 0)
 );
 end cachecont;
 
@@ -209,6 +213,9 @@ signal	b_wdatm		:std_logic_vector(15 downto 0);
 signal	b_rdatb		:std_logic_vector(15 downto 0);
 signal	brmwack		:std_logic;
 signal	braddrnone	:std_logic;
+-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, cacheext's mask and rdb per read block
+type brdbg_t is array(brblocks-1 downto 0) of std_logic_vector(1 downto 0);
+signal	brcache_dbg	:brdbg_t;
 signal	bcreadno	:integer range 0 to brblocks-1;
 signal	bcread		:std_logic;
 signal	bcnext		:integer range 0 to brblocks-1;
@@ -392,7 +399,8 @@ port(
 	ram_ce  :in std_logic := '1';
 	rclk	:in std_logic;
 	sys_ce  :in std_logic := '1';
-	rstn	:in std_logic
+	rstn	:in std_logic;
+	dbg_o	:out std_logic_vector(1 downto 0)	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up
 );
 end component;
 
@@ -484,6 +492,19 @@ port(
 );
 end component;
 
+-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, for dbg2_o
+function dbg_slv(n : integer; w : integer) return std_logic_vector is
+	variable r	:std_logic_vector(w-1 downto 0);
+	variable x	:integer;
+begin
+	x:=n;
+	for k in 0 to w-1 loop
+		if (x mod 2)=1 then r(k):='1'; else r(k):='0'; end if;
+		x:=x/2;
+	end loop;
+	return r;
+end function;
+
 begin
 
 	braddr_sel<=braddr(brcache_sel);
@@ -527,6 +548,29 @@ begin
 				             RAM_STATE=ST_GCLRDIRECT or RAM_STATE=ST_GCLRREAD or RAM_STATE=ST_GCLRWRITE else
 				"110"	when RAM_STATE=ST_FDEREAD or RAM_STATE=ST_FDEWRITE or RAM_STATE=ST_FECREAD or RAM_STATE=ST_FECWRITE else
 				"111";
+
+	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, words 0..15 of dbg2_o: 0 the state (15..11),
+	-- brcache_sel (10..7), aborted, cpu_urgent_used, sb_rd, braddrnone, brack, bwcache_dirty, bcpend;
+	-- 1 sb_wr, sb_rmw, cpbusy, vid_hazard, cpu_dirty_hazard, bwcache_busy, brcache_busy, b_rd, b_wr,
+	-- bcnext (3..0); 2/3 sb_addr; 4/5 b_addr; 6/7 bwaddr_sel; 10 refcount (15..8), vidcount (1..0)
+	process(RAM_STATE,brcache_sel,aborted,cpu_urgent_used,sb_rd,braddrnone,brack,bwcache_dirty,bcpend,
+	        sb_wr,sb_rmw,cpbusy,vid_hazard,cpu_dirty_hazard,bwcache_busy,brcache_busy,b_rd,b_wr,bcnext,
+	        sb_addr,b_addr,bwaddr_sel,refcount,vidcount)
+	variable a	:std_logic_vector(31 downto 0);
+	begin
+		dbg2_o(16 * 16 - 1 downto 0)<=(others=>'0');
+		dbg2_o(15 downto 0)<=dbg_slv(state_t'pos(RAM_STATE),5) & dbg_slv(brcache_sel,4) & aborted &
+			cpu_urgent_used & sb_rd & braddrnone & brack & bwcache_dirty & bcpend;
+		dbg2_o(31 downto 16)<=sb_wr & sb_rmw & cpbusy & vid_hazard & cpu_dirty_hazard & bwcache_busy &
+			brcache_busy & b_rd & b_wr & dbg_slv(bcnext,4);
+		a:=(others=>'0'); a(awidth-1 downto 0):=sb_addr;
+		dbg2_o(63 downto 32)<=a;
+		a:=(others=>'0'); a(awidth-1 downto 0):=b_addr;
+		dbg2_o(95 downto 64)<=a;
+		a:=(others=>'0'); a(awidth-brsize-1 downto 0):=bwaddr_sel;
+		dbg2_o(127 downto 96)<=a;
+		dbg2_o(175 downto 160)<=dbg_slv(refcount,8) & "000000" & dbg_slv(vidcount,2);
+	end process;
 
 	rambwidth<=	brsize	when RAM_STATE=ST_BREAD else
 				brsize	when RAM_STATE=ST_BWRITE else
@@ -1298,7 +1342,21 @@ begin
 	bfaddr<=b_addr(brsize-1 downto 0);
 
 	bcgen	:for i in 0 to brblocks-1 generate
-		brcache_extF0	:cacheext generic map(brsize) port map(ramaddrrc(brsize-1 downto 0),brcache_extwr(i),brcache_clr(i),brcache_busyv(i),bfaddr,brcache_ext(i),'1',rclk, ram_ce, sclk, sys_ce, rstn);
+		-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, brcache_dbg(i) added. Original:
+		-- brcache_extF0	:cacheext generic map(brsize) port map(ramaddrrc(brsize-1 downto 0),brcache_extwr(i),brcache_clr(i),brcache_busyv(i),bfaddr,brcache_ext(i),'1',rclk, ram_ce, sclk, sys_ce, rstn);
+		brcache_extF0	:cacheext generic map(brsize) port map(ramaddrrc(brsize-1 downto 0),brcache_extwr(i),brcache_clr(i),brcache_busyv(i),bfaddr,brcache_ext(i),'1',rclk, ram_ce, sclk, sys_ce, rstn, brcache_dbg(i));
+		-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, block i in words 16 + 2i and 17 + 2i:
+		-- braddr(i) (low 16 bits; then its high bits), cacheext's mask and rdb, brcache_ext(i)
+		dbg2_o(32 * i + 16 * 16 + 15 downto 32 * i + 16 * 16)	<= braddr(i)(15 downto 0);
+		process(braddr,brcache_dbg,brcache_ext)
+		variable v	:std_logic_vector(15 downto 0);
+		begin
+			v:=(others=>'0');
+			v(awidth-brsize-13 downto 3):=braddr(i)(awidth-brsize downto 16);
+			v(2 downto 1):=brcache_dbg(i);
+			v(0):=brcache_ext(i);
+			dbg2_o(32 * i + 16 * 17 + 15 downto 32 * i + 16 * 17)<=v;
+		end process;
 		BRcache0h:CACHEMEMN generic map(brsize,8)port map(ramaddrrc(brsize-1 downto 0),b_addr(brsize-1 downto 0),rclk,sclk,brwdath,b_wdatm(15 downto 8),brwr(i),brwrb(i)(1) and ram_ce,open,brdath(i));
 		BRcache0l:CACHEMEMN generic map(brsize,8)port map(ramaddrrc(brsize-1 downto 0),b_addr(brsize-1 downto 0),rclk,sclk,brwdatl,b_wdatm(7 downto 0),brwr(i),brwrb(i)(0) and ram_ce,open,brdatl(i));
 	end generate;

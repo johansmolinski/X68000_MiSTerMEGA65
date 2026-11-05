@@ -186,6 +186,8 @@ port(
 	-- (sdram_ram_rd), 50 its acknowledge (mem_ram_ack), 49 HCOMP, 48 VPSTART, 47..0 memcont's
 	-- dbg_o. Original: the port list ended with dbg_opm.
 	dbg_mem     :out std_logic_vector(51 downto 0);
+	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, cachecont's read blocks (memcont dbg2_o)
+	dbg_cache   :out std_logic_vector(1023 downto 0);
 	-- MEGA65 port 2026-11-04: an external controller in place of SDRAMC (generic EXT_RAMC to memcont, MegaX
 	-- x68_hrmem.vhd: the R3 board, everything in the HyperRAM): SDRAMC's port list towards
 	-- cachecont, rclk. Unused with EXT_RAMC false.
@@ -1119,6 +1121,7 @@ port(
 	ram_ce  :in std_logic := '1';
 	rstn	:in std_logic;
 	dbg_o	:out std_logic_vector(47 downto 0);	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+	dbg2_o	:out std_logic_vector(1023 downto 0);	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up
 	-- MEGA65 port 2026-11-04: the external controller's ports (see memcont)
 	xr_addrh_o	:out std_logic_vector(awidth-9 downto 0);
 	xr_bgn_o	:out std_logic_vector(7 downto 0);
@@ -3386,6 +3389,7 @@ begin
 		rclk		=>ramclk,
 		rstn		=>mem_rstn,
 		dbg_o		=>dbg_mem_ram,	-- MEGA65 port 2026-11-03 (temporary): R3 probe
+		dbg2_o		=>dbg_cache,	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up
 		-- MEGA65 port 2026-11-04: the external controller (see the port list)
 		xr_addrh_o	=>xr_addrh_o,
 		xr_bgn_o	=>xr_bgn_o,

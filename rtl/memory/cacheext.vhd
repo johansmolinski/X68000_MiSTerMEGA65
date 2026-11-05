@@ -21,7 +21,10 @@ port(
 	ram_ce  :in std_logic := '1';
 	rclk	:in std_logic;
 	sys_ce  :in std_logic := '1';
-	rstn	:in std_logic
+	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up (MegaX doc/history.md): 1 mask (wclk), 0 rdb
+	-- (rclk). Original: the port list ended with rstn.
+	rstn	:in std_logic;
+	dbg_o	:out std_logic_vector(1 downto 0)
 );
 end cacheext;
 
@@ -117,6 +120,7 @@ begin
 	end generate;
 
 	busy<='0';
+	dbg_o<=mask & rdb;	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up
 
 	rd<=	(rdb and (not clr) and mask) when masken='1' else (rdb and (not clr));
 end rtl;
