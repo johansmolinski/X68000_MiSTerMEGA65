@@ -926,19 +926,35 @@ g80_ddat<=	g1_rdat( 7 downto 4) & g0_rdat( 3 downto 0);
 				-- elsif(gclrend='1')then
 				-- 	gclrendrq<='1';
 				-- end if;
+				-- MEGA65 port 2026-11-06: a write with bit 1 = 0 no longer stops a running fast clear or
+				-- cancels a requested one: once requested, a clear runs its whole frame (MAME's
+				-- x68k_crtc clears GVRAM on bit 1 = 1, and a later 0 does not undo it). Every raster
+				-- copy start or end (bit 3, text scrolling) writes bit 1 = 0, so text output during a
+				-- clear left part or all of the old picture in GVRAM, shown again by later programs
+				-- (MegaX megax-s3/s6: the HDS distribution's logo, the whole of it or its bottom part,
+				-- on the next screen and again in MMDSP; timing-dependent). gclrend is no longer used.
+				-- The 2026-11-02 version (and the original's stop, as described above):
+				-- if(gclrbgn='1' and gclrbusyb='0')then
+				-- 	gclrbgnrq<='1';
+				-- 	gclrendrq<='0';
+				-- elsif(gclrend='1' and (gclrbusyb='1' or gclrbgnrq='1'))then
+				-- 	gclrendrq<='1';
+				-- end if;
+				-- if(hcomp='1')then
+				-- 	if(gclrbusyb='1' and (gclrendrq='1' or gclrrast=raster))then
+				-- 		gclrendrq<='0';
+				-- 		gclrbusyb<='0';
+				-- 	elsif(gclrbusyb='0' and gclrendrq='1')then
+				-- 		gclrendrq<='0';
+				-- 		gclrbgnrq<='0';
+				-- 	end if;
+				-- end if;
 				if(gclrbgn='1' and gclrbusyb='0')then
 					gclrbgnrq<='1';
-					gclrendrq<='0';
-				elsif(gclrend='1' and (gclrbusyb='1' or gclrbgnrq='1'))then
-					gclrendrq<='1';
 				end if;
 				if(hcomp='1')then
-					if(gclrbusyb='1' and (gclrendrq='1' or gclrrast=raster))then
-						gclrendrq<='0';
+					if(gclrbusyb='1' and gclrrast=raster)then
 						gclrbusyb<='0';
-					elsif(gclrbusyb='0' and gclrendrq='1')then
-						gclrendrq<='0';
-						gclrbgnrq<='0';
 					end if;
 				end if;
 				if(vpstart='1')then
