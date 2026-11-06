@@ -1336,11 +1336,24 @@ begin
 	end process;
 	
 	gen0: for i in 0 to brblocks-1 generate
+		-- MEGA65 port 2026-11-06: no words into the block once its fill is aborted. The abort clears
+		-- the block (brcache_clr) and the next fill takes it without a clear (aborted), under the
+		-- next line's tag; the words the controller still delivers after the abort (SDRAMC: one or
+		-- two, all of them when the one-clock ramabort falls outside its read loop, clkstate 5)
+		-- marked the old line's words present in the new line's block. MegaX: graphics shown earlier
+		-- came back in white on a later screen (the HDS distribution's logo, megax-s3). Original:
+		-- brcache_extwr(i)<=	'0' when brcache_sel/=i else
+		-- 					'1' when RAM_STATE=ST_BREAD and ramde='1' else
+		-- 					'0';
+		-- brwr(i)<=	'0' when brcache_sel/=i else
+		-- 			'0' when RAM_STATE/=ST_BREAD else
+		-- 			ramde;
 		brcache_extwr(i)<=	'0' when brcache_sel/=i else
-							'1' when RAM_STATE=ST_BREAD and ramde='1' else
+							'1' when RAM_STATE=ST_BREAD and ramde='1' and aborted='0' else
 							'0';
 		brwr(i)<=	'0' when brcache_sel/=i else
 					'0' when RAM_STATE/=ST_BREAD else
+					'0' when aborted='1' else
 					ramde;
 		brwrb(i)<=	"00" when braddr(i)/=('0' & b_addr(awidth-1 downto brsize)) else
 					b_rmw when brmwack='1' else
