@@ -211,6 +211,11 @@ port(
 end X68K_top;
 
 architecture rtl of X68K_top is
+-- MEGA65 port 2026-11-06: cachecont's read blocks (see memcont's generic map)
+function f_brblocks(ext : boolean) return integer is
+begin
+	if ext then return 32; else return 16; end if;
+end function;
 
 constant brsize		:integer	:=7;
 -- Raster-copy operates in fixed 256-byte chunks. Keep its geometry
@@ -3266,7 +3271,10 @@ begin
 		AWIDTH		=>24,
 		CAWIDTH		=>9,
 		BRSIZE		=>brsize,
-		BRBLOCKS		=>16,
+		-- MEGA65 port 2026-11-06: 32 read blocks (8 KB) with the external controller (MegaX x68_hrmem:
+		-- a cache miss costs several times SDRAMC's there; Super Street Fighter II slower than with
+		-- the SDRAM). Original: BRBLOCKS =>16,
+		BRBLOCKS		=>f_brblocks(EXT_RAMC),
 		CLKMHZ		=>RCFREQ,
 		REFINT			=>10,
 		-- MEGA65 port 2026-11-04: EXT_RAMC. Original: REFCNT ended the generic map.

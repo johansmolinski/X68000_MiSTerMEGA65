@@ -1366,6 +1366,8 @@ begin
 		brcache_extF0	:cacheext generic map(brsize) port map(ramaddrrc(brsize-1 downto 0),brcache_extwr(i),brcache_clr(i),brcache_busyv(i),bfaddr,brcache_ext(i),'1',rclk, ram_ce, sclk, sys_ce, rstn, brcache_dbg(i));
 		-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, block i in words 16 + 2i and 17 + 2i:
 		-- braddr(i) (low 16 bits; then its high bits), cacheext's mask and rdb, brcache_ext(i)
+		-- (2026-11-06: the first 24 blocks, dbg2_o has room for no more)
+		gdbg	:if i < 24 generate
 		dbg2_o(32 * i + 16 * 16 + 15 downto 32 * i + 16 * 16)	<= braddr(i)(15 downto 0);
 		process(braddr,brcache_dbg,brcache_ext)
 		variable v	:std_logic_vector(15 downto 0);
@@ -1376,6 +1378,7 @@ begin
 			v(0):=brcache_ext(i);
 			dbg2_o(32 * i + 16 * 17 + 15 downto 32 * i + 16 * 17)<=v;
 		end process;
+		end generate;
 		BRcache0h:CACHEMEMN generic map(brsize,8)port map(ramaddrrc(brsize-1 downto 0),b_addr(brsize-1 downto 0),rclk,sclk,brwdath,b_wdatm(15 downto 8),brwr(i),brwrb(i)(1) and ram_ce,open,brdath(i));
 		BRcache0l:CACHEMEMN generic map(brsize,8)port map(ramaddrrc(brsize-1 downto 0),b_addr(brsize-1 downto 0),rclk,sclk,brwdatl,b_wdatm(7 downto 0),brwr(i),brwrb(i)(0) and ram_ce,open,brdatl(i));
 	end generate;
