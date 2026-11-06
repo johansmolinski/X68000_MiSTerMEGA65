@@ -492,6 +492,9 @@ port(
 );
 end component;
 
+-- MEGA65 port 2026-11-06 (temporary): R3 bring-up, fills whose b_addr line was not sb_addr's
+signal	dbg_tagmis	:std_logic_vector(15 downto 0);
+
 -- MEGA65 port 2026-11-05 (temporary): R3 bring-up, for dbg2_o
 function dbg_slv(n : integer; w : integer) return std_logic_vector is
 	variable r	:std_logic_vector(w-1 downto 0);
@@ -552,8 +555,9 @@ begin
 	-- MEGA65 port 2026-11-05 (temporary): R3 bring-up, words 0..15 of dbg2_o: 0 the state (15..11),
 	-- brcache_sel (10..7), aborted, cpu_urgent_used, sb_rd, braddrnone, brack, bwcache_dirty, bcpend;
 	-- 1 sb_wr, sb_rmw, cpbusy, vid_hazard, cpu_dirty_hazard, bwcache_busy, brcache_busy, b_rd, b_wr,
-	-- bcnext (3..0); 2/3 sb_addr; 4/5 b_addr; 6/7 bwaddr_sel; 10 refcount (15..8), vidcount (1..0)
-	process(RAM_STATE,brcache_sel,aborted,cpu_urgent_used,sb_rd,braddrnone,brack,bwcache_dirty,bcpend,
+	-- bcnext (3..0); 2/3 sb_addr; 4/5 b_addr; 6/7 bwaddr_sel; 8 dbg_tagmis; 10 refcount (15..8),
+	-- vidcount (1..0)
+	process(dbg_tagmis,RAM_STATE,brcache_sel,aborted,cpu_urgent_used,sb_rd,braddrnone,brack,bwcache_dirty,bcpend,
 	        sb_wr,sb_rmw,cpbusy,vid_hazard,cpu_dirty_hazard,bwcache_busy,brcache_busy,b_rd,b_wr,bcnext,
 	        sb_addr,b_addr,bwaddr_sel,refcount,vidcount)
 	variable a	:std_logic_vector(31 downto 0);
@@ -569,6 +573,7 @@ begin
 		dbg2_o(95 downto 64)<=a;
 		a:=(others=>'0'); a(awidth-brsize-1 downto 0):=bwaddr_sel;
 		dbg2_o(127 downto 96)<=a;
+		dbg2_o(143 downto 128)<=dbg_tagmis;
 		dbg2_o(175 downto 160)<=dbg_slv(refcount,8) & "000000" & dbg_slv(vidcount,2);
 	end process;
 
@@ -747,6 +752,7 @@ begin
 			lfec_wr:="000";
 			ramabort<='0';
 			aborted<='0';
+			dbg_tagmis<=(others=>'0');	-- MEGA65 port 2026-11-06 (temporary): R3 bring-up
 			--swren<='0';
 			--lwren<='0';
 		elsif rising_edge(rclk) then
@@ -827,12 +833,21 @@ begin
 						ramaddrh<=sb_addr(awidth-1 downto 8);
 						rambgnaddr<=sb_addr(7 downto 0);
 						ramendaddr<=sb_addr(7 downto 0);
+						-- MEGA65 port 2026-11-06: the block gets the tag of the line it is filled from
+						-- (sb_addr), not b_addr's: b_addr runs two clocks ahead of sb_addr and changes
+						-- under a held b_rd when the bus passes between the 68000 and the DMAC (abus); a
+						-- block then held one line's words under another line's tag (MegaX R3 bring-up,
+						-- megax-hr10: two blocks with one tag, Human68k crashed at its disk boot).
+						-- Original: braddr(...)<='0' & b_addr(awidth-1 downto brsize) in both places.
+						if('0' & b_addr(awidth-1 downto brsize))/=('0' & sb_addr(awidth-1 downto brsize))then
+							dbg_tagmis<=dbg_tagmis+1;	-- MEGA65 port 2026-11-06 (temporary): R3 bring-up
+						end if;
 						if(aborted='1')then
 							aborted<='0';
-							braddr(brcache_sel)<='0' & b_addr(awidth-1 downto brsize);
+							braddr(brcache_sel)<='0' & sb_addr(awidth-1 downto brsize);
 						else
 							brcache_sel<=bcnext;
-							braddr(bcnext)<='0' & b_addr(awidth-1 downto brsize);
+							braddr(bcnext)<='0' & sb_addr(awidth-1 downto brsize);
 							brcache_clr(bcnext)<='1';
 							bcget<='1';
 						end if;
@@ -1046,12 +1061,16 @@ begin
 						ramaddrh<=sb_addr(awidth-1 downto 8);
 						rambgnaddr<=sb_addr(7 downto 0);
 						ramendaddr<=sb_addr(7 downto 0);
+						-- MEGA65 port 2026-11-06: sb_addr's tag, as above. Original: b_addr's.
+						if('0' & b_addr(awidth-1 downto brsize))/=('0' & sb_addr(awidth-1 downto brsize))then
+							dbg_tagmis<=dbg_tagmis+1;	-- MEGA65 port 2026-11-06 (temporary): R3 bring-up
+						end if;
 						if(aborted='1')then
 							aborted<='0';
-							braddr(brcache_sel)<='0' & b_addr(awidth-1 downto brsize);
+							braddr(brcache_sel)<='0' & sb_addr(awidth-1 downto brsize);
 						else
 							brcache_sel<=bcnext;
-							braddr(bcnext)<='0' & b_addr(awidth-1 downto brsize);
+							braddr(bcnext)<='0' & sb_addr(awidth-1 downto brsize);
 							brcache_clr(bcnext)<='1';
 							bcget<='1';
 						end if;
